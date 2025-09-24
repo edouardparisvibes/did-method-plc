@@ -12,7 +12,7 @@
         pkgs = nixpkgs.legacyPackages.${system};
 
         # Node.js version specified in package.json engines
-        nodejs = pkgs.nodejs_18;
+        nodejs = pkgs.nodejs;
         pnpm = pkgs.pnpm;
 
         # Common dependencies for building

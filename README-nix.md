@@ -13,7 +13,7 @@ nix develop
 ```
 
 This provides:
-- Node.js 18 and pnpm
+- Node.js and pnpm
 - PostgreSQL 15
 - Docker and docker-compose
 - Development tools (git, curl, jq)
