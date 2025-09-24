@@ -9,7 +9,7 @@
     "node": ">=18"
   },
   "scripts": {
-    "prepublish": "yarn build",
+    "prepublish": "pnpm build",
     "verify": "lerna run verify --stream",
     "prettier": "lerna run prettier",
     "build": "lerna run build",
