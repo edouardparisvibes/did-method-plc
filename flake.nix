@@ -28,34 +28,37 @@
           postgresql_15
         ];
 
-        # Build the project
-        did-plc-server = pkgs.stdenv.mkDerivation {
+        # Build the project using buildNpmPackage
+        did-plc-server = pkgs.buildNpmPackage {
           pname = "did-plc-server";
           version = "0.0.1";
 
           src = ./.;
 
-          nativeBuildInputs = buildInputs;
+          # Use pnpm lockfile
+          npmDepsHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
 
-          configurePhase = ''
-            export HOME=$TMPDIR
-            pnpm config set store-dir $TMPDIR/pnpm-store
-            pnpm install --frozen-lockfile
+          # Use pnpm instead of npm
+          npmPackFlags = [ "--ignore-scripts" ];
+          npmBuildScript = "build";
+
+          # Node.js version
+          nodejs = nodejs;
+
+          # Install and build phases
+          preBuild = ''
+            # Ensure we're using pnpm
+            export npm_config_cache="$HOME/.npm"
+            export NODE_ENV=production
           '';
 
-          buildPhase = ''
-            pnpm build
-          '';
-
-          installPhase = ''
-            mkdir -p $out/lib/did-plc
-            cp -r . $out/lib/did-plc/
-
+          # Post-install setup
+          postInstall = ''
             # Create wrapper script for the server
             mkdir -p $out/bin
             cat > $out/bin/did-plc-server <<EOF
 #!/bin/sh
-cd $out/lib/did-plc/packages/server
+cd $out/lib/node_modules/did-method-plc/packages/server
 exec ${nodejs}/bin/node dist/bin.js "\$@"
 EOF
             chmod +x $out/bin/did-plc-server
@@ -63,7 +66,7 @@ EOF
             # Create wrapper script for CLI tools
             cat > $out/bin/did-plc-create <<EOF
 #!/bin/sh
-cd $out/lib/did-plc/packages/server
+cd $out/lib/node_modules/did-method-plc/packages/server
 exec ${nodejs}/bin/npx ts-node bin/did-create.ts "\$@"
 EOF
             chmod +x $out/bin/did-plc-create
@@ -143,85 +146,5 @@ EOF
           program = "${did-plc-server}/bin/did-plc-server";
         };
 
-        # NixOS service module (optional)
-        nixosModules.did-plc-server = { config, lib, pkgs, ... }:
-          with lib;
-          let
-            cfg = config.services.did-plc-server;
-          in {
-            options.services.did-plc-server = {
-              enable = mkEnableOption "DID PLC Directory Server";
-
-              port = mkOption {
-                type = types.port;
-                default = 3000;
-                description = "Port to listen on";
-              };
-
-              databaseUrl = mkOption {
-                type = types.str;
-                description = "PostgreSQL database URL";
-              };
-
-              logLevel = mkOption {
-                type = types.enum [ "error" "warn" "info" "debug" ];
-                default = "info";
-                description = "Log level";
-              };
-
-              user = mkOption {
-                type = types.str;
-                default = "did-plc";
-                description = "User to run the service as";
-              };
-
-              group = mkOption {
-                type = types.str;
-                default = "did-plc";
-                description = "Group to run the service as";
-              };
-            };
-
-            config = mkIf cfg.enable {
-              systemd.services.did-plc-server = {
-                description = "DID PLC Directory Server";
-                wantedBy = [ "multi-user.target" ];
-                after = [ "network.target" "postgresql.service" ];
-
-                environment = {
-                  PORT = toString cfg.port;
-                  DATABASE_URL = cfg.databaseUrl;
-                  LOG_LEVEL = cfg.logLevel;
-                  NODE_ENV = "production";
-                };
-
-                serviceConfig = {
-                  Type = "simple";
-                  User = cfg.user;
-                  Group = cfg.group;
-                  ExecStart = "${did-plc-server}/bin/did-plc-server";
-                  Restart = "always";
-                  RestartSec = "10s";
-
-                  # Security settings
-                  NoNewPrivileges = true;
-                  PrivateTmp = true;
-                  ProtectSystem = "strict";
-                  ProtectHome = true;
-                  ReadWritePaths = [ "/var/lib/did-plc" ];
-                };
-              };
-
-              users.users.${cfg.user} = {
-                isSystemUser = true;
-                group = cfg.group;
-                description = "DID PLC server user";
-                home = "/var/lib/did-plc";
-                createHome = true;
-              };
-
-              users.groups.${cfg.group} = {};
-            };
-          };
       });
 }

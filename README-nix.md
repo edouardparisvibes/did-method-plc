@@ -45,16 +45,15 @@ This provides:
    nix run
    ```
 
-### Building the Package
+### Building and Running
 
-Build the complete package:
+Build the server script:
 ```bash
-nix build
+nix build .#did-plc-server
 ```
 
-This creates a self-contained package with wrapper scripts:
-- `./result/bin/did-plc-server` - Start the server
-- `./result/bin/did-plc-create` - DID creation CLI tool
+This creates a script that builds and starts the server:
+- `./result/bin/did-plc-server` - Build and start the server
 
 ### Using with direnv
 
@@ -64,29 +63,17 @@ If you have `direnv` installed, the `.envrc` file will automatically load the de
 direnv allow
 ```
 
-## NixOS Deployment
+## Direct Usage
 
-The flake includes a NixOS module for easy deployment:
+Run the server directly with Nix:
+```bash
+nix run .#did-plc-server
+```
 
-```nix
-{
-  inputs.did-plc.url = "path:/path/to/this/repo";
-
-  outputs = { self, nixpkgs, did-plc }: {
-    nixosConfigurations.myserver = nixpkgs.lib.nixosSystem {
-      modules = [
-        did-plc.nixosModules.did-plc-server
-        {
-          services.did-plc-server = {
-            enable = true;
-            port = 3000;
-            databaseUrl = "postgres://user:pass@localhost/plc";
-          };
-        }
-      ];
-    };
-  };
-}
+Or build the script first:
+```bash
+nix build .#did-plc-server
+./result/bin/did-plc-server
 ```
 
 ## Environment Variables
